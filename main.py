@@ -10,6 +10,7 @@ import torch
 import torch.optim as optim
 from torch.utils.data import DataLoader
 from torch.utils.data import Dataset
+from torch.utils.tensorboard import SummaryWriter
 import albumentations as albu
 import segmentation_models_pytorch as smp
 
@@ -46,7 +47,7 @@ def get_args():
 
 ACTIVATION = ("sigmoid")
 DEVICE = "cuda"
-
+st = datetime.datetime.now()
 
 
 class Trainer:
@@ -57,6 +58,11 @@ class Trainer:
 
         preprocessing_fn = smp.encoders.get_preprocessing_fn(args.encoder, ENCODER_WEIGHTS)
         self.preprocessing = get_preprocessing(preprocessing_fn)
+
+        log_dir = f"log/{args.arch}_{args.encoder}_fold_{args.fold_idx}"
+        if not os.path.exists(log_dir):
+            os.makedirs(log_dir, exist_ok=True)
+        self.writer = SummaryWriter(log_dir)
 
 
     def get_train_loader(self):
@@ -106,11 +112,11 @@ class Trainer:
         return model
     
     def run(self):
-        st = datetime.datetime.now()
         args = self.args
         print(json.dumps(args.__dict__, sort_keys=True, indent=2))
 
         loss = smp.utils.losses.DiceLoss()
+
         metrics = [smp.utils.metrics.IoU(threshold=0.5),]
 
         model = self.get_model()
@@ -122,7 +128,8 @@ class Trainer:
         lr_scheduler = optim.lr_scheduler.StepLR(
             optimizer,
             step_size=5,
-            gamma=0.1
+            gamma=0.1,
+            verbose=True
         ) 
         
         train_loader = self.get_train_loader()
@@ -146,8 +153,8 @@ class Trainer:
         )
 
         max_score = 0
-        for i in range(0, args.num_epochs):
-            print("\nEpoch: {}".format(i))
+        for epoch_idx in range(0, args.num_epochs):
+            print("\nEpoch: {}".format(epoch_idx))
             train_logs = train_epoch.run(train_loader)
             valid_logs = valid_epoch.run(valid_loader)
 
@@ -155,14 +162,13 @@ class Trainer:
             # do something (save model, change lr, etc.)
             if max_score < valid_logs["iou_score"]:
                 max_score = valid_logs["iou_score"]
-                torch.save(model, f"./weight/{args.arch}_{args.encoder}_{args.fold_idx}.pth")
+                torch.save(model, f"./weight/{args.arch}_{args.encoder}_fold_{args.fold_idx}.pth")
                 print("Model saved!")
-        
 
             lr_scheduler.step()
-            # if i == 5:
-            #     optimizer.param_groups[0]["lr"] = 1e-5
-            #     print("Decrease decoder learning rate to 1e-5!")
+
+            self.writer.add_scalars("train", train_logs, epoch_idx)
+            self.writer.add_scalars("val", valid_logs, epoch_idx)
 
 
 def main():

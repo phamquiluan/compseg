@@ -2,4 +2,5 @@ lib-table[dev,tee]@git+ssh://git@github.com/Cinnamon/lib-table.git@v1.13.9
 segmentation-models-pytorch
 albumentations
 black
+tensorboard
 
