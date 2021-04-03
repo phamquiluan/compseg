@@ -19,20 +19,14 @@ def get_args():
     return args
 
 
-def main():
-    with Manager() as manager:
-        output_list = manager.list()
+with Manager() as manager:
+    output_list = manager.list()
 
-        def process_single(image_path):
-            image = cv2.imread(image_path)
-            output_list.append(image.shape)
+    def process_single(image_path):
+        image = cv2.imread(image_path)
+        output_list.append(image.shape)
 
-        with Pool(int(os.cpu_count() * 0.8)) as p:
-            p.map(process_single, glob.glob("./data1/train/image/*"))
+    with Pool(int(os.cpu_count() * 0.8)) as p:
+        p.map(process_single, glob.glob("./data1/train/image/*"))
 
-        print(list(set(output_list)))
-
-
-if __name__ == "__main__":
-    main()
-
+    print(list(set(output_list)))
