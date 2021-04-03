@@ -120,6 +120,12 @@ class CompSegDataset(Dataset):
                     self.image_name_list.extend(_image_name_list)
 
         assert len(self.image_name_list) > 0
+
+        # # for debug
+        # if stage == "train":
+        #     self.image_name_list = self.image_name_list[:100]
+        # else:
+        #     self.image_name_list = self.image_name_list[:10]
         
         self.augmentation = augmentation
         self.preprocessing = preprocessing
