@@ -9,29 +9,42 @@ from tqdm import tqdm
 import torch
 from torch.utils.data import DataLoader
 from torch.utils.data import Dataset
-
 import segmentation_models_pytorch as smp
 
 
 from table.utils import ensure_color, overlay_mask
 
-ENCODER = "se_resnext50_32x4d"
-ENCODER_WEIGHTS = "imagenet"
-ACTIVATION = (
-    "sigmoid"
-)
-DEVICE = "cuda"
 
-preprocessing_fn = smp.encoders.get_preprocessing_fn(ENCODER, ENCODER_WEIGHTS)
-input_space=preprocessing_fn.keywords["input_space"]
-input_range=preprocessing_fn.keywords["input_range"]
-mean=preprocessing_fn.keywords["mean"]
-std=preprocessing_fn.keywords["std"]
+from main import (
+    get_args,
+    Trainer,
+    DEVICE,
+    ACTIVATION,
+    ENCODER_WEIGHTS
+)
+from lab.loader import CompSegDataset
+
+args = get_args()
+ENCODER = args.encoder
+
+preprocessing_fn = Trainer.preprocessing_fn
+
+input_space = preprocessing_fn.keywords["input_space"]
+input_range = preprocessing_fn.keywords["input_range"]
+mean = preprocessing_fn.keywords["mean"]
+std = preprocessing_fn.keywords["std"]
 
 
 class TestEpoch(smp.utils.train.Epoch):
 
-    def __init__(self, model, loss, metrics, device='cpu', verbose=True):
+    def __init__(
+        self,
+        model,
+        loss,
+        metrics,
+        device='cuda',
+        verbose=True
+    ):
         super().__init__(
             model=model,
             loss=loss,
@@ -95,25 +108,26 @@ class TestEpoch(smp.utils.train.Epoch):
         return logs
 
 def main():
-    from main import get_preprocessing, CompSegDataset
-
-    model = torch.load("./best_model.pth", map_location="cpu")
+    model = torch.load("./weight/unet_resnet34_fold_1.pth", map_location="cpu")
     model.cuda(0)
 
-    x_test_dir = "./data1/test/image"
-    y_test_dir = "./data1/test/mask"
-
     test_dataset = CompSegDataset(
-        x_test_dir,
-        y_test_dir,
+        root_dir="./data1/train",
+        fold_idx=1,
+        stage="val",
         augmentation=None,
-        preprocessing=get_preprocessing(preprocessing_fn),
+        preprocessing=Trainer.preprocessing
     )
-    test_loader = DataLoader(test_dataset, batch_size=1, shuffle=False, num_workers=1)
-
+    test_loader = DataLoader(
+        test_dataset,
+        batch_size=1,
+        shuffle=False,
+        num_workers=1
+    )
 
     loss = smp.utils.losses.DiceLoss()
-    metrics = [ smp.utils.metrics.IoU(threshold=0.5), ]
+
+    metrics = [smp.utils.metrics.IoU(threshold=0.5)]
 
     # loop and infor
     test_epoch = TestEpoch(
@@ -128,7 +142,6 @@ def main():
     test_logs = test_epoch.run(test_loader)
     iou_score =  test_logs["iou_score"]
     print(f"IoU: {iou_score}")
-
 
 
 if __name__ == "__main__":
