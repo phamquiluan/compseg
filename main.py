@@ -31,11 +31,13 @@ def get_args():
     parser.add_argument('--fold-idx', type=int, default=1)
 
     parser.add_argument('--arch', default="unet")
-    parser.add_argument('--encoder', default="resnet18")
+    parser.add_argument('--encoder', default="resnet34")
     parser.add_argument('--image-size', default=256)
 
-    parser.add_argument('--num-epochs', default=10)
+    parser.add_argument('--num-epochs', default=100)
     parser.add_argument('--lr', default=0.0001)
+    parser.add_argument('--step-size', default=80)
+
     parser.add_argument('--batch-size', default=16)
     parser.add_argument('--num-workers', default=16)
 
@@ -49,15 +51,17 @@ ACTIVATION = ("sigmoid")
 DEVICE = "cuda"
 st = datetime.datetime.now()
 
+args = get_args()
+
 
 class Trainer:
+    preprocessing_fn = smp.encoders.get_preprocessing_fn(args.encoder, ENCODER_WEIGHTS)
+    preprocessing = get_preprocessing(preprocessing_fn)
+
     def __init__(self, args):
         self.args = args
         self.data_dir = args.data_dir
         self.fold_idx = args.fold_idx
-
-        preprocessing_fn = smp.encoders.get_preprocessing_fn(args.encoder, ENCODER_WEIGHTS)
-        self.preprocessing = get_preprocessing(preprocessing_fn)
 
         log_dir = f"log/{args.arch}_{args.encoder}_fold_{args.fold_idx}"
         if not os.path.exists(log_dir):
@@ -71,7 +75,7 @@ class Trainer:
             fold_idx=self.fold_idx,
             stage="train",
             augmentation=get_training_augmentation(),
-            preprocessing=self.preprocessing,
+            preprocessing=preprocessing,
         )
 
         print(f"Len train set: {len(train_dataset)}")
@@ -90,7 +94,7 @@ class Trainer:
             fold_idx=self.fold_idx,
             stage="val",
             augmentation=get_validation_augmentation(),
-            preprocessing=self.preprocessing,
+            preprocessing=preprocessing,
         )
 
         print(f"Len val set: {len(val_dataset)}")
@@ -127,7 +131,7 @@ class Trainer:
         ),])
         lr_scheduler = optim.lr_scheduler.StepLR(
             optimizer,
-            step_size=5,
+            step_size=args.step_size,
             gamma=0.1,
             verbose=True
         ) 
@@ -172,7 +176,6 @@ class Trainer:
 
 
 def main():
-    args = get_args()
     trainer = Trainer(args)
     trainer.run()
 
