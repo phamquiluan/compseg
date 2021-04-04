@@ -19,7 +19,6 @@ from lab.loader import (
     CompSegDataset,
     get_preprocessing,
     get_training_augmentation,
-    get_validation_augmentation
 )
 
 
@@ -32,7 +31,7 @@ def get_args():
 
     parser.add_argument('--arch', default="unet")
     parser.add_argument('--encoder', default="resnet34")
-    parser.add_argument('--image-size', default=256)
+    parser.add_argument('--image-size', default=512)
 
     parser.add_argument('--num-epochs', default=100)
     parser.add_argument('--lr', default=0.0001)
@@ -50,12 +49,18 @@ def get_args():
 ACTIVATION = ("sigmoid")
 DEVICE = "cuda"
 st = datetime.datetime.now()
+st_str = st.strftime("%m%d_%H%M")
 
 args = get_args()
 
 
 class Trainer:
+    # wth has been done here
+    # input space (BGR), input range, mean, std, howabout image size?
+    # could we turn separately??
     preprocessing_fn = smp.encoders.get_preprocessing_fn(args.encoder, ENCODER_WEIGHTS)
+
+    # resnet 34, imagenet
     preprocessing = get_preprocessing(preprocessing_fn)
 
     def __init__(self, args):
@@ -63,7 +68,7 @@ class Trainer:
         self.data_dir = args.data_dir
         self.fold_idx = args.fold_idx
 
-        log_dir = f"log/{args.arch}_{args.encoder}_fold_{args.fold_idx}"
+        log_dir = f"log/{args.arch}_{args.encoder}_fold_{args.fold_idx}_{st_str}"
         if not os.path.exists(log_dir):
             os.makedirs(log_dir, exist_ok=True)
         self.writer = SummaryWriter(log_dir)
@@ -74,8 +79,9 @@ class Trainer:
             root_dir=self.data_dir,
             fold_idx=self.fold_idx,
             stage="train",
+            image_size=args.image_size,
             augmentation=get_training_augmentation(),
-            preprocessing=preprocessing,
+            preprocessing=self.preprocessing,
         )
 
         print(f"Len train set: {len(train_dataset)}")
@@ -93,13 +99,19 @@ class Trainer:
             root_dir=self.data_dir,
             fold_idx=self.fold_idx,
             stage="val",
-            augmentation=get_validation_augmentation(),
-            preprocessing=preprocessing,
+            image_size=args.image_size,
+            augmentation=None,
+            preprocessing=self.preprocessing,
         )
 
         print(f"Len val set: {len(val_dataset)}")
 
-        val_loader = DataLoader(val_dataset, batch_size=1, shuffle=False, num_workers=1)
+        val_loader = DataLoader(
+            val_dataset,
+            batch_size=8,
+            shuffle=False,
+            num_workers=8
+        )
         return val_loader
 
     def get_model(self):
@@ -171,8 +183,25 @@ class Trainer:
 
             lr_scheduler.step()
 
-            self.writer.add_scalars("train", train_logs, epoch_idx)
-            self.writer.add_scalars("val", valid_logs, epoch_idx)
+            # self.writer.add_scalars("train", train_logs, epoch_idx)
+            # self.writer.add_scalars("val", valid_logs, epoch_idx)
+            self.writer.add_scalars(
+                "dice",
+                {
+                    "train": train_logs["dice_loss"],
+                    "val": valid_logs["dice_loss"]
+                },
+                epoch_idx
+            )
+            self.writer.add_scalars(
+                "iou",
+                {
+                    "train": train_logs["iou_score"],
+                    "val": valid_logs["iou_score"]
+                },
+                epoch_idx
+            )
+
 
 
 def main():
