@@ -1,3 +1,4 @@
+import argparse
 import os
 import sys
 import glob
@@ -24,8 +25,8 @@ from main import (
 )
 from lab.loader import CompSegDataset
 
-args = get_args()
-ENCODER = args.encoder
+train_args = get_args()
+ENCODER = train_args.encoder
 
 preprocessing_fn = Trainer.preprocessing_fn
 
@@ -107,15 +108,27 @@ class TestEpoch(smp.utils.train.Epoch):
 
         return logs
 
+
+def get_infer_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--checkpoint-path", required=True)
+    parser.add_argument("--fold-idx", required=True)
+    args = parser.parse_args()
+    return args
+
+
+args = get_infer_args()
+assert os.path.exists(args.checkpoint_path), args.checkpoint_path
+
 def main():
-    model = torch.load("./weight/unet_resnet34_fold_1.pth", map_location="cpu")
+    model = torch.load(args.checkpoint_path, map_location="cpu")
     model.cuda(0)
 
     test_dataset = CompSegDataset(
-        root_dir="./data1/train",
-        fold_idx=1,
+        root_dir=train_args.data_dir,
+        fold_idx=args.fold_idx,
         stage="test",
-        image_size=args.image_size,
+        image_size=train_args.image_size,
         augmentation=None,
         preprocessing=Trainer.preprocessing
     )
