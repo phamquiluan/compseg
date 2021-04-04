@@ -143,3 +143,4 @@ tests/little_icdar2013
 tests/templates.json
 data1
 _ar
+tmp.py
