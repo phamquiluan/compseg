@@ -114,15 +114,16 @@ def main():
     test_dataset = CompSegDataset(
         root_dir="./data1/train",
         fold_idx=1,
-        stage="val",
+        stage="test",
+        image_size=args.image_size,
         augmentation=None,
         preprocessing=Trainer.preprocessing
     )
     test_loader = DataLoader(
         test_dataset,
-        batch_size=1,
+        batch_size=4,
         shuffle=False,
-        num_workers=1
+        num_workers=4
     )
 
     loss = smp.utils.losses.DiceLoss()
