@@ -10,6 +10,7 @@ def get_training_augmentation():
         albu.ShiftScaleRotate(
             scale_limit=0.5, rotate_limit=0, shift_limit=0.1, p=1, border_mode=0
         ),
+        # hmm, de y con so 320 nay :))
         albu.PadIfNeeded(
             min_height=320, min_width=320, always_apply=True, border_mode=0
         ),
@@ -43,32 +44,8 @@ def get_training_augmentation():
     return albu.Compose(train_transform)
 
 
-def get_validation_augmentation():
-    """Add paddings to make image shape divisible by 32"""
-    test_transform = [albu.PadIfNeeded(384, 480)]
-    return albu.Compose(test_transform)
-
-
 def to_tensor(x, **kwargs):
     return x.transpose(2, 0, 1).astype("float32")
-
-
-def get_preprocessing(preprocessing_fn):
-    """Construct preprocessing transform
-
-    Args:
-        preprocessing_fn (callbale): data normalization function
-            (can be specific for each pretrained neural network)
-    Return:
-        transform: albumentations.Compose
-
-    """
-
-    _transform = [
-        albu.Lambda(image=preprocessing_fn),
-        albu.Lambda(image=to_tensor, mask=to_tensor),
-    ]
-    return albu.Compose(_transform)
 
 
 def ensure_div_32(image):
@@ -86,20 +63,32 @@ def ensure_div_32(image):
     return image
 
 
+def get_preprocessing(preprocessing_fn):
+    _transform = [
+        albu.Lambda(image=preprocessing_fn),
+        albu.Lambda(image=to_tensor, mask=to_tensor),
+    ]
+    return albu.Compose(_transform)
+
+
 class CompSegDataset(Dataset):
     def __init__(
         self,
         root_dir,
         fold_idx,
         stage,
+        image_size,
         augmentation=None,
         preprocessing=None,
     ):
+        assert image_size % 32 == 0, image_size
+        self.image_size = image_size
+
         self.image_dir = os.path.join(root_dir, "image")
         self.mask_dir = os.path.join(root_dir, "mask")
         fold_info_path = os.path.join(root_dir, "fold_info.json")
         
-        assert stage in ["train", "val"]
+        assert stage in ["train", "val", "test"]
         assert os.path.exists(root_dir)
         assert os.path.exists(self.image_dir)
         assert os.path.exists(self.mask_dir)
@@ -113,7 +102,7 @@ class CompSegDataset(Dataset):
             fold_info = json.load(ref)
 
             for _idx, _image_name_list in fold_info.items():
-                if self.stage == "val" and _idx == self.fold_idx:
+                if self.stage in ["val", "test"] and _idx == self.fold_idx:
                     self.image_name_list.extend(_image_name_list)
 
                 if self.stage == "train" and _idx != self.fold_idx:
@@ -130,6 +119,7 @@ class CompSegDataset(Dataset):
         self.augmentation = augmentation
         self.preprocessing = preprocessing
 
+
     def __getitem__(self, i):
         image_name = self.image_name_list[i]
         
@@ -137,14 +127,20 @@ class CompSegDataset(Dataset):
         assert os.path.exists(image_path), image_path
         image = cv2.imread(image_path)
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-        image = ensure_div_32(image)
 
         mask_path = os.path.join(self.mask_dir, f"{image_name}_ed_gt.png")
         assert os.path.exists(mask_path), mask_path
         mask = cv2.imread(mask_path, 0)
-        mask = ensure_div_32(mask)
-        mask = cv2.threshold(mask, 127.5, 255, cv2.THRESH_BINARY)[1] / 255.
+            
+        # for test :))
+        image_size = self.image_size
+        image = cv2.resize(image, (image_size, image_size))
+        mask = cv2.resize(mask, (image_size, image_size))
 
+        # image = ensure_div_32(image)
+        # mask = ensure_div_32(mask)
+
+        mask = cv2.threshold(mask, 127.5, 255, cv2.THRESH_BINARY)[1] / 255.
         mask = mask.astype("float")
         
         if len(mask.shape) == 2:
@@ -154,7 +150,7 @@ class CompSegDataset(Dataset):
         if self.augmentation:
             sample = self.augmentation(image=image, mask=mask)
             image, mask = sample["image"], sample["mask"]
-
+        
         # apply preprocessing
         if self.preprocessing:
             sample = self.preprocessing(image=image, mask=mask)
