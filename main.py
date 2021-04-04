@@ -38,7 +38,7 @@ def get_args():
     parser.add_argument('--step-size', default=80)
 
     parser.add_argument('--batch-size', default=16)
-    parser.add_argument('--num-workers', default=16)
+    parser.add_argument('--num-workers', default=8)
 
     parser.add_argument('--tta', action="store_true")
     parser.add_argument('--data-dir', default="/home/luan/research/compseg/data1/train") 
@@ -110,7 +110,7 @@ class Trainer:
             val_dataset,
             batch_size=8,
             shuffle=False,
-            num_workers=8
+            num_workers=4
         )
         return val_loader
 
