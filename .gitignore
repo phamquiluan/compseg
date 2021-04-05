@@ -144,3 +144,5 @@ tests/templates.json
 data1
 _ar
 tmp.py
+log
+test_set
