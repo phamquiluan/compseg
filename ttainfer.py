@@ -22,7 +22,7 @@ preprocessing = smp.encoders.get_preprocessing_fn(
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-w", "--weight-path", required=True)
-parser.add_argument("-o", "--output-path")
+parser.add_argument("-o", "--output-path", required=True)
 parser.add_argument("-v", "--visualize-path")
 args = parser.parse_args()
 
@@ -47,6 +47,10 @@ def main():
     for image_path in tqdm(glob.glob("./test_set/input/*")):
         image_name = os.path.basename(image_path)
         file_name = os.path.splitext(image_name)[0]
+    
+        # for debug
+        if not os.path.exists(f"./wrong/{image_name}"):
+            continue
         
         # read 
         image_size = 512
@@ -66,12 +70,18 @@ def main():
 
             mask = m(tensor)
             mask = (mask.cpu().numpy() * 255).astype(np.uint8)[0][0]
-            # mask = cv2.threshold(mask, 127.5, 255, cv2.THRESH_BINARY)[1]
     
         cv2.imwrite(
             os.path.join(args.output_path, f"{file_name}.png"),
             ensure_color(mask)
         )
+
+        if args.visualize_path:
+            cv2.imwrite(
+                os.path.join(args.visualize_path, f"{file_name}.png"),
+                overlay_mask(image, mask)
+            )
+
 
 
 if __name__ == "__main__":
