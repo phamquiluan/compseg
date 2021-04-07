@@ -3,4 +3,5 @@ segmentation-models-pytorch
 albumentations
 black
 tensorboard
-
+tqdm
+ttach
