@@ -1,9 +1,9 @@
 Play to win :)
 
-train: for train
 
-infer: infer (for fun)
-
-ttainfer: for final infer + tta
-
-merge: merge folds and diff arch
+task1: 
+	1. train: for train
+	2. infer: infer (for fun)
+	3. ttainfer: for final infer + tta
+	4. merge: merge folds + tta
+	5. pp\_task1: postprocesssing
