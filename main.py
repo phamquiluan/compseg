@@ -31,7 +31,7 @@ def get_args():
 
     parser.add_argument('--arch', default="unet")
     parser.add_argument('--encoder', default="resnet34")
-    parser.add_argument('--image-size', default=512)
+    parser.add_argument('--image-size', type=int, default=512)
 
     parser.add_argument('--num-epochs', default=100)
     parser.add_argument('--lr', default=0.0001)
@@ -41,7 +41,7 @@ def get_args():
     parser.add_argument('--num-workers', default=8)
 
     parser.add_argument('--tta', action="store_true")
-    parser.add_argument('--data-dir', default="/home/luan/research/compseg/data1/train") 
+    parser.add_argument('--data-dir', default="/home/luan/research/compseg/data/train") 
 
     args = parser.parse_args()
     return args
