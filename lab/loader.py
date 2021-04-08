@@ -1,6 +1,7 @@
 import os
 import json
 import cv2
+import numpy as np
 import albumentations as albu
 from torch.utils.data import Dataset
 
@@ -127,18 +128,19 @@ class CompSegDataset(Dataset):
         assert os.path.exists(image_path), image_path
         image = cv2.imread(image_path)
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-
-        mask_path = os.path.join(self.mask_dir, f"{image_name}_ed_gt.png")
+        
+        # TODO: can than cho nay
+        mask_path = os.path.join(self.mask_dir, f"{image_name}_sn_gt.png")
         assert os.path.exists(mask_path), mask_path
         mask = cv2.imread(mask_path, 0)
-            
+        
+        if "sn_gt" in mask_path:
+            mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, np.ones((50, 50)))            
+
         # for test :))
         image_size = self.image_size
         image = cv2.resize(image, (image_size, image_size))
         mask = cv2.resize(mask, (image_size, image_size))
-
-        # image = ensure_div_32(image)
-        # mask = ensure_div_32(mask)
 
         mask = cv2.threshold(mask, 127.5, 255, cv2.THRESH_BINARY)[1] / 255.
         mask = mask.astype("float")
@@ -155,7 +157,8 @@ class CompSegDataset(Dataset):
         if self.preprocessing:
             sample = self.preprocessing(image=image, mask=mask)
             image, mask = sample["image"], sample["mask"]
-
+        
+        # print(image.shape, mask.shape)
         return image, mask
 
     def __len__(self):
@@ -164,13 +167,8 @@ class CompSegDataset(Dataset):
 
 if __name__ == "__main__":
 
-    for i in range(1, 6):
-        # print(i)
-        dataset = CompSegDataset(
-            root_dir="/home/luan/research/compseg/data1/train/",
-            fold_idx=str(i),
-            stage="train",
-        )
-
-    # print(len(dataset))
-    
+    dataset = CompSegDataset(
+        root_dir="/home/luan/research/compseg/data1/train/",
+        fold_idx=1,
+        stage="train",
+    )
