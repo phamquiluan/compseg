@@ -48,10 +48,6 @@ def main():
         image_name = os.path.basename(image_path)
         file_name = os.path.splitext(image_name)[0]
     
-        # for debug
-        if not os.path.exists(f"./wrong/{image_name}"):
-            continue
-        
         # read 
         image_size = 512
         image = cv2.imread(image_path)
@@ -79,7 +75,7 @@ def main():
         if args.visualize_path:
             cv2.imwrite(
                 os.path.join(args.visualize_path, f"{file_name}.png"),
-                overlay_mask(image, mask)
+                np.concatenate((overlay_mask(image, mask), ensure_color(mask)), axis=1)
             )
 
 
