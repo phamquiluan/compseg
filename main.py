@@ -21,6 +21,7 @@ from lab.loader import (
     get_training_augmentation,
 )
 
+cv2.setNumThreads(4)
 
 ENCODER_WEIGHTS = "imagenet"
 
@@ -33,9 +34,12 @@ def get_args():
     parser.add_argument('--encoder', default="resnet34")
     parser.add_argument('--image-size', type=int, default=512)
 
-    parser.add_argument('--num-epochs', default=100)
-    parser.add_argument('--lr', default=0.0001)
-    parser.add_argument('--step-size', default=80)
+    # parser.add_argument('--num-epochs', default=100)
+    # parser.add_argument('--lr', default=0.0001)
+    # parser.add_argument('--step-size', default=80)
+    parser.add_argument('--num-epochs', default=50)
+    parser.add_argument('--lr', default=0.001)
+    parser.add_argument('--step-size', default=20)
 
     parser.add_argument('--batch-size', type=int, default=16)
     parser.add_argument('--num-workers', type=int, default=8)
