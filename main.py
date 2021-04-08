@@ -37,8 +37,8 @@ def get_args():
     parser.add_argument('--lr', default=0.0001)
     parser.add_argument('--step-size', default=80)
 
-    parser.add_argument('--batch-size', default=16)
-    parser.add_argument('--num-workers', default=8)
+    parser.add_argument('--batch-size', type=int, default=16)
+    parser.add_argument('--num-workers', type=int, default=8)
 
     parser.add_argument('--tta', action="store_true")
     parser.add_argument('--data-dir', default="/home/luan/research/compseg/data/train") 
