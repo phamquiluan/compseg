@@ -29,53 +29,64 @@ args = parser.parse_args()
 
 @torch.no_grad()
 def main():
+    # tta_trans = tta.Compose([
+    #     tta.VerticalFlip(),
+    #     tta.HorizontalFlip(),
+    #     tta.Rotate90(angles=[0,180]),
+    # ])
+    
+    # for kane
     tta_trans = tta.Compose([
-        tta.VerticalFlip(),
+        tta.Add(np.linspace(-0.8, 0.8, 100)),
         tta.HorizontalFlip(),
-        tta.Rotate90(angles=[0,180]),
     ])
         
     m = torch.load(args.weight_path, map_location="cpu")
     mtta = tta.SegmentationTTAWrapper(m, tta_trans,merge_mode="mean")
-
-    m.cuda()
-    m.eval()
-
-    mtta.cuda()
+    
+    if torch.cuda.is_available():
+        mtta.cuda()
     mtta.eval()
 
-    for image_path in tqdm(glob.glob("./test_set/input/*")):
+    image_size = 512
+
+    print(f"IMAGE SIZE: {image_size}")
+
+    # for image_path in tqdm(glob.glob("./test_set/input/*")):
+    # for image_path in tqdm(glob.glob("./data/kane/image/*")):
+    for image_path in tqdm(glob.glob("./kane_test/*")):
+
         image_name = os.path.basename(image_path)
         file_name = os.path.splitext(image_name)[0]
-    
+
         # read 
-        image_size = 512
         image = cv2.imread(image_path)
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         image = cv2.resize(image, (image_size, image_size))
             
         timage = preprocessing(image)
         tensor = torch.FloatTensor(to_tensor(timage)[None, ...])
-        tensor = tensor.cuda()
+        if torch.cuda.is_available():
+            tensor = tensor.cuda()
 
         with torch.no_grad():
             mask_tta = mtta(tensor)
             mask_tta = (mask_tta.cpu().numpy() * 255).astype(np.uint8)[0][0]
-            mask_tta = cv2.threshold(mask_tta, 127.5, 255, cv2.THRESH_BINARY)[1]
-            debug_image = overlay_mask(image, mask_tta)
+            # mask_tta = cv2.threshold(mask_tta, 127.5, 255, cv2.THRESH_BINARY)[1]
+            # debug_image = overlay_mask(image, mask_tta)
 
-            mask = m(tensor)
-            mask = (mask.cpu().numpy() * 255).astype(np.uint8)[0][0]
+            # mask = m(tensor)
+            # mask = (mask.cpu().numpy() * 255).astype(np.uint8)[0][0]
     
         cv2.imwrite(
             os.path.join(args.output_path, f"{file_name}.png"),
-            ensure_color(mask)
+            ensure_color(mask_tta)
         )
 
         if args.visualize_path:
             cv2.imwrite(
                 os.path.join(args.visualize_path, f"{file_name}.png"),
-                np.concatenate((overlay_mask(image, mask), ensure_color(mask)), axis=1)
+                np.concatenate((overlay_mask(image, mask_tta), ensure_color(mask_tta)), axis=1)
             )
 
 

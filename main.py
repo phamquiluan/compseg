@@ -17,11 +17,12 @@ import segmentation_models_pytorch as smp
 from table.utils import ensure_color
 from lab.loader import (
     CompSegDataset,
+    HairDataset,
     get_preprocessing,
     get_training_augmentation,
 )
 
-cv2.setNumThreads(4)
+cv2.setNumThreads(8)
 
 ENCODER_WEIGHTS = "imagenet"
 
@@ -34,18 +35,16 @@ def get_args():
     parser.add_argument('--encoder', default="resnet34")
     parser.add_argument('--image-size', type=int, default=512)
 
-    # parser.add_argument('--num-epochs', default=100)
-    # parser.add_argument('--lr', default=0.0001)
-    # parser.add_argument('--step-size', default=80)
-    parser.add_argument('--num-epochs', default=50)
-    parser.add_argument('--lr', default=0.001)
-    parser.add_argument('--step-size', default=20)
+    parser.add_argument('--num-epochs', default=100)
+    parser.add_argument('--lr', default=0.0001)
+    parser.add_argument('--step-size', default=80)
 
     parser.add_argument('--batch-size', type=int, default=16)
     parser.add_argument('--num-workers', type=int, default=8)
 
     parser.add_argument('--tta', action="store_true")
-    parser.add_argument('--data-dir', default="/home/luan/research/compseg/data/train") 
+    # parser.add_argument('--data-dir', default="/home/luan/research/compseg/data/sid") 
+    parser.add_argument('--data-dir', default="/home/luan/research/compseg/data/kane") 
 
     args = parser.parse_args()
     return args
@@ -71,20 +70,22 @@ class Trainer:
         self.args = args
         self.data_dir = args.data_dir
         self.fold_idx = args.fold_idx
+        self.crop_size = int(0.625 * args.image_size)
 
-        log_dir = f"log/{args.arch}_{args.encoder}_fold_{args.fold_idx}_{st_str}"
+        log_dir = f"kane_log/{args.arch}_{args.encoder}_fold_{args.fold_idx}_{st_str}"
         if not os.path.exists(log_dir):
             os.makedirs(log_dir, exist_ok=True)
         self.writer = SummaryWriter(log_dir)
 
 
     def get_train_loader(self):
-        train_dataset = CompSegDataset(
+        # train_dataset = CompSegDataset(
+        train_dataset = HairDataset(
             root_dir=self.data_dir,
             fold_idx=self.fold_idx,
             stage="train",
             image_size=args.image_size,
-            augmentation=get_training_augmentation(),
+            augmentation=get_training_augmentation(crop_size=self.crop_size),
             preprocessing=self.preprocessing,
         )
 
@@ -99,7 +100,8 @@ class Trainer:
         return train_loader
 
     def get_val_loader(self):
-        val_dataset = CompSegDataset(
+        # val_dataset = CompSegDataset(
+        val_dataset = HairDataset(
             root_dir=self.data_dir,
             fold_idx=self.fold_idx,
             stage="val",
@@ -182,7 +184,7 @@ class Trainer:
             # do something (save model, change lr, etc.)
             if max_score < valid_logs["iou_score"]:
                 max_score = valid_logs["iou_score"]
-                torch.save(model, f"./weight/{args.arch}_{args.encoder}_fold_{args.fold_idx}.pth")
+                torch.save(model, f"./kane_weight/{args.arch}_{args.encoder}_fold_{args.fold_idx}.pth")
                 print("Model saved!")
 
             lr_scheduler.step()
